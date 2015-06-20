@@ -20,6 +20,7 @@ var inmem map[string]DataObject
 
 func init() {
 	inmem = make(map[string]DataObject)
+	startCleanupTimer()
 }
 
 //SetData sets the data objecct of cache
@@ -81,6 +82,23 @@ func startCleanupTimer() {
 	})()
 }
 
+//returns true if a key has expired
 func checkExpiry(key string) bool {
-	return inmem[key].Expiry > 0 && time.Now().Sub(inmem[key].Timestamp).Nanoseconds() >= inmem[key].Expiry*1000000
+	// return false if key not found
+	if _, ok := inmem[key]; ok {
+		return false
+	}
+	val := inmem[key]
+	//return false if ttl not set
+	ttlSecs := val.Expiry * 1000000
+	if ttlSecs <= 0 {
+		return false
+	}
+
+	now := time.Now()
+	keyEntryTime := val.Timestamp
+	timeSinceEntry := now.Sub(keyEntryTime).Nanoseconds()
+
+	// return true if its been longer than ttl
+	return timeSinceEntry >= ttlSecs
 }
